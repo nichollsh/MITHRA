@@ -2,5 +2,6 @@
 .DS_Store
 data/*.nc
 data/*.dat
+data/*.tmp
 nogit*
-
+__pycache__
