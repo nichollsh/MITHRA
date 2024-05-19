@@ -5,3 +5,6 @@ data/*.dat
 data/*.tmp
 nogit*
 __pycache__
+*.bak
+
+

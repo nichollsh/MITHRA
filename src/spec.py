@@ -1,4 +1,4 @@
-import requests, os
+import requests, os, shutil
 import numpy as np
 import xarray as xr
 
@@ -17,18 +17,11 @@ def download_spec(use_cache=True):
 
     # Download if required
     if not os.path.exists(out):
+        print("Downloading BT_SETTL grid...")
+        with requests.get(url, stream=True) as r:
+            with open(out, 'wb') as f:
+                shutil.copyfileobj(r.raw, f)
 
-        # Check server
-        response = requests.get(url)
-        
-        # Download file if request is ok
-        if response.status_code == 200:
-            utils.rmsafe(out)
-            with open(out, 'wb') as file:
-                file.write(response.content)
-        else:
-            return 1
-    
     return flag
 
 
