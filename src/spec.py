@@ -4,7 +4,7 @@ import xarray as xr
 
 import src.utils as utils
 
-def download_spec(use_cache=True):
+def download_grid(use_cache=True):
     flag:int = 0
 
     # Path to full data
@@ -24,8 +24,38 @@ def download_spec(use_cache=True):
 
     return flag
 
+def read_file():
+    src = os.path.join(utils.dirs["data"],"btsettl_full.nc")
+    if not os.path.exists(src):
+        print("WARNING: Cannot find BT_SETTL file!")
+        return None
+    return xr.open_dataset(src)
 
-def read_spec():
-    src = os.path.join(utils.dirs["utils"],"btsettl_full.nc")
-    ds_disk = xr.open_dataset(src)
+def get_axes(ds):
+    arr_teff = ds.coords['par1']
+    arr_logg = ds.coords['par2']
+    print(arr_teff)
+    arr_wave = ds.coords["wavelength"]
+
+    return np.array(arr_wave), np.array(arr_teff), np.array(arr_logg)
+
+def get_spec(ds, teff, logg):
+    
+    # get axes
+    arr_wave, arr_teff, arr_logg = get_axes(ds)
+
+    # get indices
+    i = np.argmin(np.abs(arr_teff - teff))
+    j = np.argmin(np.abs(arr_logg - logg))
+
+    print(arr_teff[i])
+    print(arr_logg[j])
+
+    # get data 
+    flux_grid = ds.data_vars["grid"]
+
+    # return spectrum
+    return arr_wave, np.array(flux_grid[:,i,j])
+
+
 
