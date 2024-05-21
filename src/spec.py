@@ -1,4 +1,5 @@
 import glob, os, gc, subprocess
+import xarray as xr
 import numpy as np
 import scipy.interpolate as interp
 
@@ -77,7 +78,7 @@ def get_axes():
 
     return arr_teff, arr_logg
 
-def create_interp(num_wl=100):
+def create_interp(num_wl=100, teff_lims=(1.0, 2e5), logg_lims=(1.0, 50.0)):
 
     # get wavelength data from first file 
     data = np.load(list_files()[0])
@@ -86,7 +87,7 @@ def create_interp(num_wl=100):
     # limit wl range
     max_wave = min(max_wave, 1e5)
     min_wave = max(min_wave, 1.0)
-    target_wave = np.logspace(np.log10(min_wave+0.1), np.log10(max_wave-0.1), num_wl)
+    target_wave = np.linspace(np.log10(min_wave+0.1), np.log10(max_wave-0.1), num_wl)
 
     # flattened data from files
     flat_teff = []
@@ -97,11 +98,23 @@ def create_interp(num_wl=100):
         # get data
         data = np.load(f)
         t,l = get_params_from_name(f)
-        w,f = data[0],data[1]
+        w,f = np.log10(data[0]),data[1]
+
+        # skip this point?
+        if not(teff_lims[0] <= t <= teff_lims[1]):
+            continue 
+        if not(logg_lims[0] <= l <= logg_lims[1]):
+            continue
+
+        # drop duplicate values and ensure sorted
+        _,mask = np.unique(w, return_index=True)
+        w = w[mask]
+        f = f[mask]
 
         # interpolate (downsample) flux and wavelength arrays
-        w_ds = np.logspace(np.log10(w[0]),np.log10(w[-1]), num_wl*2)
-        f_ds = np.interp(w_ds, w, f)
+        w_ds = np.linspace(w[0],w[-1], num_wl*2)
+        # f_ds = np.interp(w_ds, w, f)
+        f_ds = interp.pchip_interpolate(w,f,w_ds)
 
         # store
         flat_wave.extend(list(w_ds))
@@ -129,18 +142,46 @@ def create_interp(num_wl=100):
     print(len(yi))
     print(len(zi))
     print("meshgrid...",flush=True)
-    xi,yi,zi = np.meshgrid(xi,yi,zi)
+    xi,yi,zi = np.meshgrid(xi,yi,zi, indexing='ij')
 
     print(np.shape(xi))
-    print(np.shape(yi))
-    print(np.shape(zi))
     print("interpolate...",flush=True)
 
     # interpolate
     vi = interp.griddata((flat_teff,flat_logg,flat_wave),flat_flux,(xi,yi,zi),method='linear')
 
     print("done")
-    return vi, xi, yi, zi
+    return (vi, xi, yi, 10.0**zi)
+
+
+def write_interp(itp:tuple):
+
+    # get coords
+    v,x,y,z = itp[0],itp[1],itp[2],itp[3]
+
+    arr_teff = np.unique(x)
+    arr_logg = np.unique(y)
+    arr_wave = z[0,0,:]
+
+    coords={
+            "teff": arr_teff,
+            "logg": arr_logg,
+            "wave": arr_wave,
+            }
+    
+    
+    # get data
+    data = {"flux":xr.DataArray(data=v, coords=coords, dims=["teff","logg","wave"])}
+    
+    # create dataset
+    ds = xr.Dataset(data_vars=data, coords=coords)
+
+    # save
+    fpath = os.path.join(utils.dirs["data"], "btsettl_interp.nc")
+    if os.path.exists(fpath):
+        os.remove(fpath)
+    ds.to_netcdf(fpath)
+
 
 def get_spec_from_interp(itp:tuple, teff:float, logg:float):
 
@@ -163,7 +204,7 @@ def get_spec_from_interp(itp:tuple, teff:float, logg:float):
     return z[iclose,jclose,:], v[iclose,jclose,:]
 
 
-def get_spec_from_npy(teff, logg, extend_planck=False, xmax=1.0e9):
+def get_spec_from_npy(teff, logg, xmax=1.0e9):
 
     # get axes 
     arr_teff, arr_logg = get_axes()
@@ -184,27 +225,26 @@ def get_spec_from_npy(teff, logg, extend_planck=False, xmax=1.0e9):
         wl = wl[:imax]
         fl = fl[:imax]
 
-    # extend with planck function?
-    if extend_planck and (wl[-1] < xmax):
-        dx = wl[-1]*0.01
-        print(dx)
-        xp = np.arange(wl[-1]+dx, xmax, dx)
-        yp = np.zeros(np.shape(xp))
-        for i,x in enumerate(xp):
-            lam = x * 1.0e-9  # nm -> m
-
-            # Calculate planck function value [W m-2 sr-1 m-1]
-            # http://spiff.rit.edu/classes/phys317/lectures/planck.html
-            yp[i] = 2.0 * utils.h_pl * utils.c_vac**2.0 / lam**5.0   *   1.0 / ( np.exp(utils.h_pl * utils.c_vac / (lam * utils.k_B * arr_teff[grid_i])) - 1.0)
-
-            # Integrate solid angle (hemisphere), convert units
-            yp[i] = yp[i] * np.pi * 1.0e-9 # [W m-2 nm-1]
-            yp[i] = yp[i] * 1000.0 # [erg s-1 cm-2 nm-1]
-
-        wl = np.concatenate((wl, xp))
-        fl = np.concatenate((fl, yp))
-
     # return spectrum
     return wl,fl
 
+def extend_planck(teff, wl, fl, xmax=1.0e9):
+    dx = wl[-1]*0.1
+    print(dx)
+    xp = np.arange(wl[-1]+dx, xmax, dx)
+    yp = np.zeros(np.shape(xp))
+    for i,x in enumerate(xp):
+        lam = x * 1.0e-9  # nm -> m
 
+        # Calculate planck function value [W m-2 sr-1 m-1]
+        # http://spiff.rit.edu/classes/phys317/lectures/planck.html
+        yp[i] = 2.0 * utils.h_pl * utils.c_vac**2.0 / lam**5.0   *   1.0 / ( np.exp(utils.h_pl * utils.c_vac / (lam * utils.k_B * teff)) - 1.0)
+
+        # Integrate solid angle (hemisphere), convert units
+        yp[i] = yp[i] * np.pi * 1.0e-9 # [W m-2 nm-1]
+        yp[i] = yp[i] * 1000.0 # [erg s-1 cm-2 nm-1]
+
+    wl = np.concatenate((wl, xp))
+    fl = np.concatenate((fl, yp))
+
+    return wl,fl
