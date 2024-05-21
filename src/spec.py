@@ -1,8 +1,54 @@
-import glob, os
+import glob, os, gc, subprocess
 import numpy as np
 import scipy.interpolate as interp
 
 import src.utils as utils
+
+def download_npy(url:str):
+
+    # download file 
+    tmp = "/tmp/btsettl"
+    if os.path.exists(tmp):
+        os.remove(tmp)
+    subprocess.run(["wget","-q","-O",tmp,url])
+
+    # get name 
+    with open(tmp,'r') as hdl:
+        lines = hdl.readlines()
+    teff = float(lines[1].split(" ")[3])
+    logg = float(lines[2].split(" ")[3]) * 100.0
+    out = os.path.join(utils.dirs["data"],"btsettl-cifist_%04d_%04d"%(teff,logg))
+    if os.path.exists(out):
+        os.remove(out)
+
+    wl = []
+    fl = []
+    for i,l in enumerate(lines[9:]):
+        s = l.split()
+        if len(s) == 2:
+            wl.append(float(s[0]))
+            fl.append(float(s[1]))
+        else:
+            break
+
+    # skip lines, to reduce file size
+    pitch = 2
+        
+    # save data
+    wl = np.array(wl[::pitch])*0.1   # convert to nm
+    fl = np.array(fl[::pitch])/0.1   # convert to erg s-1 cm-2 nm-1
+    np.save(out, np.array([wl,fl]))
+
+    del wl
+    del fl
+    del lines
+    return 
+
+def download_all():
+    for i in range(1,447,1):
+        print("Downloading %03d..."%i)
+        url = "http://svo2.cab.inta-csic.es/theory/newov2/ssap.php?model=bt-settl-cifist&fid=%d&format=ascii"%i
+        download_npy(url)
 
 def get_params_from_name(fpath:str):
     name = fpath.split("/")[-1].split(".")[0]
@@ -40,9 +86,7 @@ def create_interp(num_wl=100):
     # limit wl range
     max_wave = min(max_wave, 1e5)
     min_wave = max(min_wave, 1.0)
-
     target_wave = np.logspace(np.log10(min_wave+0.1), np.log10(max_wave-0.1), num_wl)
-    print(len(target_wave))
 
     # flattened data from files
     flat_teff = []
@@ -50,24 +94,27 @@ def create_interp(num_wl=100):
     flat_wave = []
     flat_flux = []
     for i,f in enumerate(list_files()):
-        # print("Read file %d"%i)
         # get data
         data = np.load(f)
         t,l = get_params_from_name(f)
         w,f = data[0],data[1]
-        # print("    %d"%len(data[0]))
 
-        # interpolate flux
-        interp_flux = np.interp(target_wave, w, f)
+        # interpolate (downsample) flux and wavelength arrays
+        w_ds = np.logspace(np.log10(w[0]),np.log10(w[-1]), num_wl*2)
+        f_ds = np.interp(w_ds, w, f)
 
         # store
-        flat_wave.extend(list(target_wave))
-        flat_flux.extend(list(interp_flux))
-        flat_teff.extend(list(np.ones(len(target_wave))*t))
-        flat_logg.extend(list(np.ones(len(target_wave))*l))
+        flat_wave.extend(list(w_ds))
+        flat_flux.extend(list(f_ds))
+        flat_teff.extend(list(np.ones(len(w_ds))*t))
+        flat_logg.extend(list(np.ones(len(w_ds))*l))
 
-    print(len(flat_flux))
-    print(len(flat_teff))
+        del w_ds 
+        del f_ds 
+        del w 
+        del f 
+        del data 
+        gc.collect()
 
     # unique
     uniq_teff = np.unique(flat_teff)
@@ -77,7 +124,6 @@ def create_interp(num_wl=100):
     xi = np.linspace(np.amin(uniq_teff), np.amax(uniq_teff), len(uniq_teff))
     yi = np.linspace(np.amin(uniq_logg), np.amax(uniq_logg), len(uniq_logg))
     zi = target_wave
-
 
     print(len(xi))
     print(len(yi))
@@ -96,7 +142,28 @@ def create_interp(num_wl=100):
     print("done")
     return vi, xi, yi, zi
 
-def get_spec(teff, logg, extend_planck=False, xmax=1.0e9):
+def get_spec_from_interp(itp:tuple, teff:float, logg:float):
+
+    v,x,y,z = itp[0], itp[1], itp[2], itp[3]
+    sh = np.shape(v)
+
+    iclose = -1 
+    jclose = -1
+    dclose = 1e99
+    for i in range(sh[0]):
+        for j in range(sh[1]):
+            t = x[i,j,0]
+            l = y[i,j,0]
+            d = np.sqrt(((teff-t)/teff)**2 + ((logg-l)/logg)**2) * 100  # distance [%]
+            if d < dclose:
+                iclose = i
+                jclose = j
+                dclose = d
+    
+    return z[iclose,jclose,:], v[iclose,jclose,:]
+
+
+def get_spec_from_npy(teff, logg, extend_planck=False, xmax=1.0e9):
 
     # get axes 
     arr_teff, arr_logg = get_axes()
