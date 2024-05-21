@@ -117,7 +117,6 @@ def get_params_bhac(tracks:dict, mass:float, age:float, params:list)->float:
             itrack = i
             dtrack = d
     track = tracks[itrack]
-    print("Best track = %d (%.2e)"%(itrack,track["mass"]))
 
     # Interpolate over time, for each param
     age = max(age, np.amin(track["age"]))

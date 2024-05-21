@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 def plot_spectrum(wl,fl,writepath="",title=""):
-    plt.close("all")
     fig,ax = plt.subplots()
 
     ax.plot(wl,fl, lw=0.8, color='black')
