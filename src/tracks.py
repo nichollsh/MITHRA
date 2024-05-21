@@ -1,5 +1,6 @@
 import requests, os
 import numpy as np
+import scipy.interpolate as interp
 
 import src.utils as utils
 
@@ -49,18 +50,18 @@ def read_bhac()->dict:
 
     # loop through file
     i = 0
-    arr_keys = ["arr_age",          
-                "arr_Teff",      
-                "arr_L/Ls",       
-                "arr_logg",      
-                "arr_R/Rs",     
-                "arr_logli",
-                "arr_tcentral", 
-                "arr_rhocentral", 
-                "arr_mcore", 
-                "arr_rcore", 
-                "arr_k2c", 
-                "arr_k2r"
+    arr_keys = ["age",          
+                "Teff",      
+                "L/Ls",       
+                "logg",      
+                "R/Rs",     
+                "logli",
+                "tcentral", 
+                "rhocentral", 
+                "mcore", 
+                "rcore", 
+                "k2c", 
+                "k2r"
                 ]
     track = {}
     while i < nlines:
@@ -101,11 +102,11 @@ def read_bhac()->dict:
             t[k] = np.array(t[k], dtype=float)
 
         # Convert logt to years
-        t["arr_age"] = 10.0 ** t["arr_age"]
+        t["age"] = 10.0 ** t["age"]
 
     return tracks
     
-def get_params_bhac(tracks:dict, mass:float, age:float)->dict:
+def get_params_bhac(tracks:dict, mass:float, age:float, params:list)->float:
 
     # Find closest track
     itrack:int   = -1
@@ -118,26 +119,12 @@ def get_params_bhac(tracks:dict, mass:float, age:float)->dict:
     track = tracks[itrack]
     print("Best track = %d (%.2e)"%(itrack,track["mass"]))
 
-    # Find closest age 
-    iage:int   = -1
-    dage:float = 1e99
-    for i,t in enumerate(track["arr_age"]):
-        d = abs(age-t)
-        if d < dage:
-            iage = i
-            dage = d 
+    # Interpolate over time, for each param
+    age = max(age, np.amin(track["age"]))
+    age = min(age, np.amax(track["age"]))
 
-    print("Best age   = %d (%.2e yr)"%(iage,track["arr_age"][iage]))
-    
-    # Get parameters at this mass,age
-    out = {}
-    for key in track.keys():
-        if "arr" in key:
-            key_short = key.replace("arr_","")
-            out[key_short] = track[key][iage]
-        else:
-            out[key] = track[key]
-
-    # Return parameters
-    return out 
+    out = []
+    for p in params:
+        out.append(interp.pchip_interpolate(track["age"],track[p],age))
+    return out
 

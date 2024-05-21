@@ -1,61 +1,70 @@
-import requests, os, shutil
+import glob, os
 import numpy as np
-import xarray as xr
 
 import src.utils as utils
 
-def download_grid(use_cache=True):
-    flag:int = 0
+def get_params_from_name(fpath:str):
+    name = fpath.split("/")[-1].split(".")[0]
+    splt = name.split("_")
+    teff = float(splt[-2])
+    logg = float(splt[-1])/100.0
+    return teff,logg
 
-    # Path to full data
-    url = "https://zenodo.org/records/8015969/files/BT_SETTL_full.nc?download=1"
-    out = os.path.join(utils.dirs["data"] , "btsettl_full.nc")
+def get_spec(teff, logg, extend_planck=False, xmax=1.0e9):
 
-    # Check if path exists
-    if os.path.exists(out) and (not use_cache):
-        os.remove(out)
+    # get all files
+    files = glob.glob(os.path.join(utils.dirs["data"], "btsettl-cifist*.npy"))
+    names = [f.split("/")[-1].split(".")[0] for f in files]
 
-    # Download if required
-    if not os.path.exists(out):
-        print("Downloading BT_SETTL grid...")
-        with requests.get(url, stream=True) as r:
-            with open(out, 'wb') as f:
-                shutil.copyfileobj(r.raw, f)
-
-    return flag
-
-def read_file():
-    src = os.path.join(utils.dirs["data"],"btsettl_full.nc")
-    if not os.path.exists(src):
-        print("WARNING: Cannot find BT_SETTL file!")
-        return None
-    return xr.open_dataset(src)
-
-def get_axes(ds):
-    arr_teff = ds.coords['par1']
-    arr_logg = ds.coords['par2']
-    print(arr_teff)
-    arr_wave = ds.coords["wavelength"]
-
-    return np.array(arr_wave), np.array(arr_teff), np.array(arr_logg)
-
-def get_spec(ds, teff, logg):
+    # get all teff,logg
+    arr_teff = []
+    arr_logg = []
+    for f in names:
+        t,l = get_params_from_name(f)
+        arr_teff.append(t)
+        arr_logg.append(l)
+    arr_teff = np.unique(arr_teff)
+    arr_logg = np.unique(arr_logg)
     
-    # get axes
-    arr_wave, arr_teff, arr_logg = get_axes(ds)
-
-    # get indices
-    i = np.argmin(np.abs(arr_teff - teff))
-    j = np.argmin(np.abs(arr_logg - logg))
-
-    print(arr_teff[i])
-    print(arr_logg[j])
+    # get best indices
+    grid_i = np.argmin(np.abs(arr_teff - teff))
+    grid_j = np.argmin(np.abs(arr_logg - logg))
 
     # get data 
-    flux_grid = ds.data_vars["grid"]
+    best = os.path.join(utils.dirs["data"], "btsettl-cifist_%04d_%04d.npy"%(arr_teff[grid_i],100*arr_logg[grid_j]))
+    data = np.load(best)
+    wl = data[0]
+    fl = data[1]
+
+    # truncate?
+    if wl[-1] > xmax:
+        imax = np.argmin(np.abs(wl - xmax))
+        wl = wl[:imax]
+        fl = fl[:imax]
+
+    print(len(wl))
+
+    # extend with planck function?
+    if extend_planck and (wl[-1] < xmax):
+        dx = wl[-1]*0.01
+        print(dx)
+        xp = np.arange(wl[-1]+dx, xmax, dx)
+        yp = np.zeros(np.shape(xp))
+        for i,x in enumerate(xp):
+            lam = x * 1.0e-9  # nm -> m
+
+            # Calculate planck function value [W m-2 sr-1 m-1]
+            # http://spiff.rit.edu/classes/phys317/lectures/planck.html
+            yp[i] = 2.0 * utils.h_pl * utils.c_vac**2.0 / lam**5.0   *   1.0 / ( np.exp(utils.h_pl * utils.c_vac / (lam * utils.k_B * arr_teff[grid_i])) - 1.0)
+
+            # Integrate solid angle (hemisphere), convert units
+            yp[i] = yp[i] * np.pi * 1.0e-9 # [W m-2 nm-1]
+            yp[i] = yp[i] * 1000.0 # [erg s-1 cm-2 nm-1]
+
+        wl = np.concatenate((wl, xp))
+        fl = np.concatenate((fl, yp))
 
     # return spectrum
-    return arr_wave, np.array(flux_grid[:,i,j])
-
+    return wl,fl
 
 

@@ -8,7 +8,7 @@ def plot_spectrum(wl,fl,writepath="",title=""):
     ax.plot(wl,fl, lw=0.8, color='black')
 
     ax.set(xscale="log", yscale="log")
-    ax.set(xlabel="??", ylabel="??")
+    ax.set(xlabel="Wavelength [nm]", ylabel="Spectral flux [erg s-1 cm-2 nm-1]")
     if len(title) > 0:
         ax.set_title(title)
 

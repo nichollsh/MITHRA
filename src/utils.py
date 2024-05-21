@@ -1,5 +1,10 @@
 import os 
 
+h_pl = 6.62607015e-34 # planck's constant
+c_vac = 299792458.0
+k_B = 1.380649e-23
+
+
 dirs = {
     "src":os.path.abspath(os.path.dirname(os.path.abspath(__file__))+"/")
 }
