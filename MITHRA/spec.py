@@ -262,12 +262,13 @@ def create_dataset(itp:tuple):
 
     return ds
 
-def write_dataset(ds:xr.Dataset):
+def write_dataset(ds:xr.Dataset, fp:str):
     '''
     Write interpolated grid to NetCDF file using Xarray.
 
     Parameters
        ds (xr.Dataset): dataset of interpolated data
+       fp (str): path to nc file
 
     Returns
         None
@@ -275,10 +276,26 @@ def write_dataset(ds:xr.Dataset):
     '''
 
     # save
-    fpath = os.path.join(utils.dirs["data"], "btsettl_interp.nc")
-    utils.rmsafe(fpath)
-    ds.to_netcdf(fpath)
+    fp = os.path.abspath(fp)
+    utils.rmsafe(fp)
+    ds.to_netcdf(fp)
     return 
+
+def read_dataset(fp:str)->xr.Dataset:
+    '''
+    Read interpolated grid from NetCDF file using Xarray
+
+    Parameters
+       fp (str): path to nc file
+
+    Returns
+        out (xr.Dataset): dataset of interpolated data
+    '''
+
+    with xr.open_dataset(fp) as ds:
+        out = ds.copy(deep=True)
+    return out
+
 
 def get_spec_from_dataset(ds:xr.Dataset, teff:float, logg:float):
     '''
@@ -386,10 +403,11 @@ def write_csv(fp:str, wl:float,fl:float):
     fp = os.path.abspath(fp)
     utils.rmsafe(fp)
 
-    X = np.array([wl,fl])
+    X = np.array([wl,fl]).T
     head = "Wavelength [nm] , Flux [erg s-1 cm-2 nm-1]"
     np.savetxt(fp, X, fmt="%.5e", delimiter=',',header=head)
     return 
+
 
 def extend_planck(teff, wl, fl, xmax=1.0e9):
     dx = wl[-1]*0.1
