@@ -4,9 +4,9 @@ version = "0.1.0"
 description = "A wrapper for stellar evolution models and tracks."
 authors = ["Harrison Nicholls <harrison.nicholls@physics.ox.ac.uk>"]
 readme = "README.md"
-packages = [
-    { include = "mithra" }
-]
+# packages = [
+#     { include = "mithra" }
+# ]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -18,8 +18,8 @@ requests = "^2.32.2"
 [tool.poetry.dev-dependencies]
 pytest = "^6.2"
 
-[tool.poetry.scripts]
-my-script = "mithra.install:main"
+# [tool.poetry.scripts]
+# my-script = "mithra.install:main"
 
 [build-system]
 requires = ["poetry-core"]
