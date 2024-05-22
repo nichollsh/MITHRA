@@ -10,7 +10,7 @@ on:
 jobs:
   install:
     runs-on: ubuntu-latest
-    name: Install MITHRA package
+    name: Install and build MITHRA package
     steps:
       - uses: actions/checkout@v2
 
@@ -51,16 +51,11 @@ jobs:
       # they'll be installed and working.
       - run: poetry install --no-interaction
 
+      # Build whl file
+      - run: poetry build
+
       # And finally run tests. I'm using pytest and all my pytest config is in my `pyproject.toml`
       # so this line is super-simple. But it could be as complex as you need.
       # - run: poetry run pytest
-
-  build:
-        runs-on: ubuntu-latest
-        needs: install
-        name: Build MITHRA package
-
-        steps:
-          - run: poetry build
 
 
