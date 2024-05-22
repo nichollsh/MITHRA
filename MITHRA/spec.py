@@ -122,7 +122,7 @@ def list_files():
     files = glob.glob(os.path.join(utils.dirs["data"], "btsettl-cifist*.npy")) 
     return list(files)
 
-def create_interp(num_wl=40, num_teff=0, num_logg=0, teff_lims=(1.0, 2e5), logg_lims=(1.0, 50.0)):
+def create_interp(num_teff=0, num_logg=0, num_wave=40, teff_lims=(1.0, 2e5), logg_lims=(1.0, 50.0)):
     '''
     Create interpolated grid of teff, logg, and wavelength from npy files.
 
@@ -132,9 +132,9 @@ def create_interp(num_wl=40, num_teff=0, num_logg=0, teff_lims=(1.0, 2e5), logg_
     so no extrapolation is performed but missing values are filled.
 
     Parameters
-        num_wl (int): number of interpolatedwavelength points
         num_teff (int): number of interpolated teff points (0 for same as input)
         num_logg (int): number of interpolated logg points (0 for same as input)
+        num_wave (int): number of interpolatedwavelength points
         teff_lims (tuple): minimum and maximum teff values to use
         logg_lims (tuple): minimum and maximum logg values to use
 
@@ -150,10 +150,10 @@ def create_interp(num_wl=40, num_teff=0, num_logg=0, teff_lims=(1.0, 2e5), logg_
     min_wave, max_wave = np.amin(data[0]), np.amax(data[1])
 
     # limit wl range
-    max_wave = min(max_wave, 1e5)
-    min_wave = max(min_wave, 1.0)
-    target_wave = np.linspace(np.log10(min_wave+0.1), np.log10(max_wave-0.1), num_wl)
-    len_ds = num_wl * 2
+    max_wave = min(max_wave, 1e5)  # 100 um
+    min_wave = max(min_wave, 1.0)  # 1 nm
+    target_wave = np.linspace(np.log10(min_wave+0.1), np.log10(max_wave-0.1), num_wave)
+    len_ds = int(num_wave * 3)  # length of downsampled spectrum
 
     # flattened data from files
     flat_teff = []
@@ -162,16 +162,18 @@ def create_interp(num_wl=40, num_teff=0, num_logg=0, teff_lims=(1.0, 2e5), logg_
     flat_flux = []
     print("Reading npy files...")
     for i,f in enumerate(list_files()):
-        # get data
-        data = np.load(f)
+        # get header
         t,l = get_params_from_name(f)
-        w,f = np.log10(data[0]),data[1]
 
         # skip this point?
         if not(teff_lims[0] <= t <= teff_lims[1]):
             continue 
         if not(logg_lims[0] <= l <= logg_lims[1]):
             continue
+
+        # load data
+        data = np.load(f)
+        w,f = np.log10(data[0]),data[1]
 
         # drop duplicate values and ensure sorted
         _,mask = np.unique(w, return_index=True)
