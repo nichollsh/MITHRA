@@ -15,6 +15,7 @@ Pronounced: *mith*-*rah*. Named after the Iranian deity of light and the sun.
 
 ## Requirements
 * Python (>= 3.12)
+* wget
 
 ## Running the code
 TBD
