@@ -4,6 +4,9 @@ version = "0.1.0"
 description = "A wrapper for stellar evolution models and tracks."
 authors = ["Harrison Nicholls <harrison.nicholls@physics.ox.ac.uk>"]
 readme = "README.md"
+packages = [
+    { include = "mithra" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.11"
