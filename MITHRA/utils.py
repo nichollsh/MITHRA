@@ -18,3 +18,5 @@ def rmsafe(file:str):
         return
     if os.path.exists(file):
         os.remove(file)
+    return 
+

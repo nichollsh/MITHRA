@@ -22,8 +22,7 @@ def scrape_npy(url:str):
 
     # download file 
     tmp = "/tmp/btsettl"
-    if os.path.exists(tmp):
-        os.remove(tmp)
+    utils.rmsafe(tmp)
     subprocess.run(["wget","-q","-O",tmp,url])
 
     # get name 
@@ -32,8 +31,7 @@ def scrape_npy(url:str):
     teff = float(lines[1].split(" ")[3])
     logg = float(lines[2].split(" ")[3]) * 100.0
     out = os.path.join(utils.dirs["data"],"btsettl-cifist_%04d_%04d"%(teff,logg))
-    if os.path.exists(out):
-        os.remove(out)
+    utils.rmsafe(out)
 
     wl = []
     fl = []
@@ -131,7 +129,7 @@ def create_interp(num_wl=40, num_teff=0, num_logg=0, teff_lims=(1.0, 2e5), logg_
     Reads all npy files in the data folder, creating a single data structure of 
     flux versus wavelength, teff, and logg. This grid may have missing values.
     The data are interpolated within the same (or reduced) teff and logg grid, 
-    so no extrapolation is performed.
+    so no extrapolation is performed but missing values are filled.
 
     Parameters
         num_wl (int): number of interpolatedwavelength points
@@ -155,12 +153,14 @@ def create_interp(num_wl=40, num_teff=0, num_logg=0, teff_lims=(1.0, 2e5), logg_
     max_wave = min(max_wave, 1e5)
     min_wave = max(min_wave, 1.0)
     target_wave = np.linspace(np.log10(min_wave+0.1), np.log10(max_wave-0.1), num_wl)
+    len_ds = num_wl * 2
 
     # flattened data from files
     flat_teff = []
     flat_logg = []
     flat_wave = []
     flat_flux = []
+    print("Reading npy files...")
     for i,f in enumerate(list_files()):
         # get data
         data = np.load(f)
@@ -182,7 +182,7 @@ def create_interp(num_wl=40, num_teff=0, num_logg=0, teff_lims=(1.0, 2e5), logg_
         # this is to ensure that all spectra cover the same wavelength range
         # and also to significantly improve the performance of the unstructured
         # interpolation step by reducing the number of points
-        w_ds = np.linspace(w[0],w[-1], num_wl*2)
+        w_ds = np.linspace(w[0],w[-1], len_ds)
         f_ds = interp.pchip_interpolate(w,f,w_ds)
 
         # store
@@ -197,35 +197,34 @@ def create_interp(num_wl=40, num_teff=0, num_logg=0, teff_lims=(1.0, 2e5), logg_
         del f 
         del data 
         gc.collect()
+    print("    done")
 
     # unique
     uniq_teff = np.unique(flat_teff)
     uniq_logg = np.unique(flat_logg)
+    print("Source axes: (teff, logg, wave) = (%d, %d, %d)"%(len(uniq_teff), len(uniq_logg), len_ds))
 
     # output sizes
-    if not(1 <= num_teff <= len(uniq_teff)):
+    if num_teff <= 1:
         num_teff = len(uniq_teff)
-    if not(1 <= num_logg <= len(uniq_logg)):
+    if num_logg <= 1:
         num_logg = len(uniq_logg)
 
     # target grid to interpolate to
     xi = np.linspace(np.amin(uniq_teff), np.amax(uniq_teff), num_teff)
     yi = np.linspace(np.amin(uniq_logg), np.amax(uniq_logg), num_logg)
     zi = target_wave
+    print("Interpolation target: (teff, logg, wave) = (%d, %d, %d)"%(len(xi), len(yi), len(zi)))
 
-    print(len(xi))
-    print(len(yi))
-    print(len(zi))
-    print("meshgrid...",flush=True)
+    print("Meshgrid",flush=True)
     xi,yi,zi = np.meshgrid(xi,yi,zi, indexing='ij')
 
-    print(np.shape(xi))
-    print("interpolate...",flush=True)
-
     # interpolate
+    print("Interpolating...")
+    print("    please wait")
     vi = interp.griddata((flat_teff,flat_logg,flat_wave),flat_flux,(xi,yi,zi),method='linear')
 
-    print("done")
+    print("    done")
     return (vi, xi, yi, 10.0**zi)
 
 
@@ -277,42 +276,33 @@ def write_dataset(ds:xr.Dataset):
 
     # save
     fpath = os.path.join(utils.dirs["data"], "btsettl_interp.nc")
-    if os.path.exists(fpath):
-        os.remove(fpath)
+    utils.rmsafe(fpath)
     ds.to_netcdf(fpath)
     return 
 
-def get_spec_from_interp(itp:tuple, teff:float, logg:float):
+def get_spec_from_dataset(ds:xr.Dataset, teff:float, logg:float):
     '''
     Get stellar spectrum from interpolated grid, searching for best point.
 
     Parameters
-       itp (tuple): tuple of four 3D output arrays from create_interp()
+       ds (xr.Dataset): dataset containing interpolated spectra
        teff (float): target teff
        logg (float): target logg
 
     Returns
         wl (np.ndarray): wavelengths [nm]
         fl (np.ndarray): spectral fluxes [erg s-1 cm-2 nm-1]
+        teff (float): optimal teff
+        logg (logg): optimal logg
     '''
 
-    v,x,y,z = itp[0], itp[1], itp[2], itp[3]
-    sh = np.shape(v)
+    close = ds.sel(teff=teff, logg=logg, method='nearest')
+    wl   = np.array(close.coords["wave"].values)
+    fl   = np.array(close["flux"].values)
+    teff = float(close.coords["teff"].values)
+    logg = float(close.coords["logg"].values)
 
-    iclose = -1 
-    jclose = -1
-    dclose = 1e99
-    for i in range(sh[0]):
-        for j in range(sh[1]):
-            t = x[i,j,0]
-            l = y[i,j,0]
-            d = np.sqrt(((teff-t)/teff)**2 + ((logg-l)/logg)**2) * 100  # distance [%]
-            if d < dclose:
-                iclose = i
-                jclose = j
-                dclose = d
-    
-    return z[iclose,jclose,:], v[iclose,jclose,:]
+    return wl, fl, teff, logg
 
 def get_axes():
     '''
@@ -342,7 +332,7 @@ def get_axes():
 
     return arr_teff, arr_logg
 
-def get_spec_from_npy(teff, logg, xmax=1.0e9):
+def get_spec_from_npy(teff:float, logg:float, xmax:float=1.0e9):
     '''
     Read stellar spectrum from npy file, locating it according to teff and logg.
 
@@ -361,9 +351,11 @@ def get_spec_from_npy(teff, logg, xmax=1.0e9):
     # get best indices
     grid_i = np.argmin(np.abs(arr_teff - teff))
     grid_j = np.argmin(np.abs(arr_logg - logg))
+    grid_t = arr_teff[grid_i]
+    grid_l = arr_logg[grid_j]
 
     # get data 
-    best = os.path.join(utils.dirs["data"], "btsettl-cifist_%04d_%04d.npy"%(arr_teff[grid_i],100*arr_logg[grid_j]))
+    best = os.path.join(utils.dirs["data"], "btsettl-cifist_%04d_%04d.npy"%(grid_t,grid_l*100.0))
     data = np.load(best)
     wl = data[0]
     fl = data[1]
@@ -376,6 +368,28 @@ def get_spec_from_npy(teff, logg, xmax=1.0e9):
 
     # return spectrum
     return wl,fl
+
+
+def write_csv(fp:str, wl:float,fl:float):
+    '''
+    Write stellar spectrum to csv file.
+
+    Parameters
+        fp (string): path to output file
+        wl (np.ndarray): wavelengths [nm]
+        fl (np.ndarray): spectral fluxes [erg s-1 cm-2 nm-1]
+
+    Returns
+        None
+    '''
+
+    fp = os.path.abspath(fp)
+    utils.rmsafe(fp)
+
+    X = np.array([wl,fl])
+    head = "Wavelength [nm] , Flux [erg s-1 cm-2 nm-1]"
+    np.savetxt(fp, X, fmt="%.5e", delimiter=',',header=head)
+    return 
 
 def extend_planck(teff, wl, fl, xmax=1.0e9):
     dx = wl[-1]*0.1

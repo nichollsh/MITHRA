@@ -12,8 +12,8 @@ def download_bhac(use_cache=True)->int:
     out = os.path.join(utils.dirs["data"] , "bhac15_full.dat")
 
     # Check if path exists
-    if os.path.exists(out) and (not use_cache):
-        os.remove(out)
+    if not use_cache:
+        utils.rmsafe(out)
 
     # Download if required
     if not os.path.exists(out):
@@ -106,7 +106,7 @@ def read_bhac()->dict:
 
     return tracks
     
-def get_params_bhac(tracks:dict, mass:float, age:float, params:list)->float:
+def get_params_bhac(tracks:dict, mass:float, age:float, params:list)->list:
 
     # Find closest track
     itrack:int   = -1
