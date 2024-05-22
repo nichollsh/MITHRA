@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "MITHRA_nichollsh"
+version = "0.0.1"
+authors = [
+  { name="Harrison Nicholls", email="harrison.nicholls@physics.ox.ac.uk" },
+]
+description = "A wrapper for stellar evolution models and tracks."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/nichollsh/MITHRA"
+Issues = "https://github.com/nichollsh/MITHRA/issues"
+

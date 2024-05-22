@@ -6,6 +6,19 @@ import scipy.interpolate as interp
 import src.utils as utils
 
 def download_npy(url:str):
+    '''
+    Scrape a stellar spectrum from the Centro de Astrobiología website.
+    
+    This spectrum is saved to an npy file in the data folder of this package. 
+    The npy file contains a 2D array. The first element is the wavelength array,
+    and the second is the spectral flux array [erg s-1 cm-2 nm-1].
+
+    Parameters
+        url (str): url from which to download the file
+
+    Returns
+        None
+    '''
 
     # download file 
     tmp = "/tmp/btsettl"
@@ -46,12 +59,35 @@ def download_npy(url:str):
     return 
 
 def download_all():
+    '''
+    Iteratively download all stellar spectra from the BT-SETTL CIFIST grid from
+    the Centro de Astrobiología website. Saved to the data folder.
+
+    Parameters
+        None
+
+    Returns
+        None
+    '''
+
     for i in range(1,447,1):
         print("Downloading %03d..."%i)
         url = "http://svo2.cab.inta-csic.es/theory/newov2/ssap.php?model=bt-settl-cifist&fid=%d&format=ascii"%i
         download_npy(url)
+    return 
 
 def get_params_from_name(fpath:str):
+    '''
+    Get model gridpoint parameters (Teff, logg) from its file name.
+
+    Parameters
+        fpath (str): path to npy file
+
+    Returns
+        teff (float): effective temperature [K]
+        logg (float): log surface gravity [log cm/s^2]
+    '''
+
     name = fpath.split("/")[-1].split(".")[0]
     splt = name.split("_")
     teff = float(splt[-2])
@@ -59,26 +95,40 @@ def get_params_from_name(fpath:str):
     return teff,logg
 
 def list_files():
-    return glob.glob(os.path.join(utils.dirs["data"], "btsettl-cifist*.npy"))
+    '''
+    List all BT-SETTL npy files in the data directory
 
-def get_axes():
-    # get all files
-    files = list_files()
-    names = [f.split("/")[-1].split(".")[0] for f in files]
+    Parameters
+        None
 
-    # get all teff,logg
-    arr_teff = []
-    arr_logg = []
-    for f in names:
-        t,l = get_params_from_name(f)
-        arr_teff.append(t)
-        arr_logg.append(l)
-    arr_teff = np.unique(arr_teff)
-    arr_logg = np.unique(arr_logg)
+    Returns
+        files (list): list of absolute file paths
+    '''
+    files = glob.glob(os.path.join(utils.dirs["data"], "btsettl-cifist*.npy")) 
+    return list(files)
 
-    return arr_teff, arr_logg
+def create_interp(num_wl=40, num_teff=0, num_logg=0, teff_lims=(1.0, 2e5), logg_lims=(1.0, 50.0)):
+    '''
+    Create interpolated grid of teff, logg, and wavelength from npy files.
 
-def create_interp(num_wl=100, teff_lims=(1.0, 2e5), logg_lims=(1.0, 50.0)):
+    Reads all npy files in the data folder, creating a single data structure of 
+    flux versus wavelength, teff, and logg. This grid may have missing values.
+    The data are interpolated within the same (or reduced) teff and logg grid, 
+    so no extrapolation is performed.
+
+    Parameters
+        num_wl (int): number of interpolatedwavelength points
+        num_teff (int): number of interpolated teff points (0 for same as input)
+        num_logg (int): number of interpolated logg points (0 for same as input)
+        teff_lims (tuple): minimum and maximum teff values to use
+        logg_lims (tuple): minimum and maximum logg values to use
+
+    Returns
+        vi (np.ndarray): array of fluxes in a 3D array (teff, logg, wavelength)
+        xi (np.ndarray): array of teff [K] on same axes as above
+        yi (np.ndarray): array of logg [log cm/s^2] on same axes as above
+        zi (np.ndarray): array of wavelength [nm] on same axes as above
+    '''
 
     # get wavelength data from first file 
     data = np.load(list_files()[0])
@@ -111,9 +161,11 @@ def create_interp(num_wl=100, teff_lims=(1.0, 2e5), logg_lims=(1.0, 50.0)):
         w = w[mask]
         f = f[mask]
 
-        # interpolate (downsample) flux and wavelength arrays
+        # interpolate (downsample) flux and wavelength arrays...
+        # this is to ensure that all spectra cover the same wavelength range
+        # and also to significantly improve the performance of the unstructured
+        # interpolation step by reducing the number of points
         w_ds = np.linspace(w[0],w[-1], num_wl*2)
-        # f_ds = np.interp(w_ds, w, f)
         f_ds = interp.pchip_interpolate(w,f,w_ds)
 
         # store
@@ -133,9 +185,15 @@ def create_interp(num_wl=100, teff_lims=(1.0, 2e5), logg_lims=(1.0, 50.0)):
     uniq_teff = np.unique(flat_teff)
     uniq_logg = np.unique(flat_logg)
 
+    # output sizes
+    if not(1 <= num_teff <= len(uniq_teff)):
+        num_teff = len(uniq_teff)
+    if not(1 <= num_logg <= len(uniq_logg)):
+        num_logg = len(uniq_logg)
+
     # target grid to interpolate to
-    xi = np.linspace(np.amin(uniq_teff), np.amax(uniq_teff), len(uniq_teff))
-    yi = np.linspace(np.amin(uniq_logg), np.amax(uniq_logg), len(uniq_logg))
+    xi = np.linspace(np.amin(uniq_teff), np.amax(uniq_teff), num_teff)
+    yi = np.linspace(np.amin(uniq_logg), np.amax(uniq_logg), num_logg)
     zi = target_wave
 
     print(len(xi))
@@ -154,7 +212,17 @@ def create_interp(num_wl=100, teff_lims=(1.0, 2e5), logg_lims=(1.0, 50.0)):
     return (vi, xi, yi, 10.0**zi)
 
 
-def write_interp(itp:tuple):
+def create_dataset(itp:tuple):
+    '''
+    Write interpolated grid to NetCDF file using Xarray.
+
+    Parameters
+       itp (tuple): tuple of four 3D output arrays from create_interp()
+
+    Returns
+        ds (xr.Dataset): dataset of interpolated data
+        
+    '''
 
     # get coords
     v,x,y,z = itp[0],itp[1],itp[2],itp[3]
@@ -176,14 +244,43 @@ def write_interp(itp:tuple):
     # create dataset
     ds = xr.Dataset(data_vars=data, coords=coords)
 
+    return ds
+
+def write_dataset(itp:tuple):
+    '''
+    Write interpolated grid to NetCDF file using Xarray.
+
+    Parameters
+       ds (xr.Dataset): dataset of interpolated data
+
+    Returns
+        None
+        
+    '''
+
+    # create dataset
+    ds = create_dataset(itp)    
+
     # save
     fpath = os.path.join(utils.dirs["data"], "btsettl_interp.nc")
     if os.path.exists(fpath):
         os.remove(fpath)
     ds.to_netcdf(fpath)
-
+    return 
 
 def get_spec_from_interp(itp:tuple, teff:float, logg:float):
+    '''
+    Get stellar spectrum from interpolated grid, searching for best point.
+
+    Parameters
+       itp (tuple): tuple of four 3D output arrays from create_interp()
+       teff (float): target teff
+       logg (float): target logg
+
+    Returns
+        wl (np.ndarray): wavelengths [nm]
+        fl (np.ndarray): spectral fluxes [erg s-1 cm-2 nm-1]
+    '''
 
     v,x,y,z = itp[0], itp[1], itp[2], itp[3]
     sh = np.shape(v)
@@ -203,8 +300,46 @@ def get_spec_from_interp(itp:tuple, teff:float, logg:float):
     
     return z[iclose,jclose,:], v[iclose,jclose,:]
 
+def get_axes():
+    '''
+    Get coordinates of logg and teff axes from files in data folder.
+
+    Parameters
+        None
+
+    Returns
+        arr_teff (np.ndarray): teff points
+        arr_logg (np.ndarray): logg points
+    '''
+
+    # get all files
+    files = list_files()
+    names = [f.split("/")[-1].split(".")[0] for f in files]
+
+    # get all teff,logg
+    arr_teff = []
+    arr_logg = []
+    for f in names:
+        t,l = get_params_from_name(f)
+        arr_teff.append(t)
+        arr_logg.append(l)
+    arr_teff = np.unique(arr_teff)
+    arr_logg = np.unique(arr_logg)
+
+    return arr_teff, arr_logg
 
 def get_spec_from_npy(teff, logg, xmax=1.0e9):
+    '''
+    Read stellar spectrum from npy file, locating it according to teff and logg.
+
+    Parameters
+        teff (float): effective temperature [K]
+        logg (float): log surface gravity [log cm/s^2]
+
+    Returns
+        wl (np.ndarray): wavelengths [nm]
+        fl (np.ndarray): spectral fluxes [erg s-1 cm-2 nm-1]
+    '''
 
     # get axes 
     arr_teff, arr_logg = get_axes()

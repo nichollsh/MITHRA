@@ -1,8 +1,10 @@
 # MITHRA
-Wrapper for stellar evolution models and tracks. 
+A wrapper for stellar evolution models and tracks. 
 
 MITHRA calculates stellar spectra, integrated fluxes, and other parameters using pre-calculated stellar evolution tracks and grids of stellar spectra.
-This code is distributed under the BSD 3-Clause Clear license.
+This code is distributed under the BSD 3-Clause license.
+
+Pronounced: *mith*-*rah*. Named after the Iranian deity of light and the sun.
 
 ## Repository structure 
 * `README.md`       - This file
