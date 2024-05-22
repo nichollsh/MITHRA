@@ -2,7 +2,7 @@ import requests, os
 import numpy as np
 import scipy.interpolate as interp
 
-import src.utils as utils
+import MITHRA.utils as utils
 
 def download_bhac(use_cache=True)->int:
     flag:int = 0

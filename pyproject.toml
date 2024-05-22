@@ -1,23 +1,18 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[project]
-name = "MITHRA_nichollsh"
-version = "0.0.1"
-authors = [
-  { name="Harrison Nicholls", email="harrison.nicholls@physics.ox.ac.uk" },
-]
+[tool.poetry]
+name = "MITHRA"
+version = "0.1.0"
 description = "A wrapper for stellar evolution models and tracks."
+authors = ["Harrison Nicholls <harrison.nicholls@physics.ox.ac.uk>"]
 readme = "README.md"
-requires-python = ">=3.11"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: BSD License",
-    "Operating System :: OS Independent",
-]
 
-[project.urls]
-Homepage = "https://github.com/nichollsh/MITHRA"
-Issues = "https://github.com/nichollsh/MITHRA/issues"
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 

@@ -3,13 +3,13 @@ import xarray as xr
 import numpy as np
 import scipy.interpolate as interp
 
-import src.utils as utils
+import MITHRA.utils as utils
 
-def download_npy(url:str):
+def scrape_npy(url:str):
     '''
     Scrape a stellar spectrum from the Centro de Astrobiología website.
     
-    This spectrum is saved to an npy file in the data folder of this package. 
+    This spectrum is saved to an npy file in the data folder of this repository. 
     The npy file contains a 2D array. The first element is the wavelength array,
     and the second is the spectral flux array [erg s-1 cm-2 nm-1].
 
@@ -58,7 +58,7 @@ def download_npy(url:str):
     del lines
     return 
 
-def download_all():
+def scrape_all():
     '''
     Iteratively download all stellar spectra from the BT-SETTL CIFIST grid from
     the Centro de Astrobiología website. Saved to the data folder.
@@ -73,8 +73,25 @@ def download_all():
     for i in range(1,447,1):
         print("Downloading %03d..."%i)
         url = "http://svo2.cab.inta-csic.es/theory/newov2/ssap.php?model=bt-settl-cifist&fid=%d&format=ascii"%i
-        download_npy(url)
+        scrape_npy(url)
     return 
+
+def download_tar():
+    '''
+    Download BT-SETTL CIFIST grid from OSF page.
+
+    This tar.gz file was created using the scrape functions above, and contains 
+    all of the npy files containing wavelengths and fluxes. This tar.gz is
+    unpackaged in the data folder of this repository.
+
+    Parameters
+        None
+
+    Returns
+        None
+    '''
+    raise Exception("Not yet implemented")
+
 
 def get_params_from_name(fpath:str):
     '''
@@ -246,7 +263,7 @@ def create_dataset(itp:tuple):
 
     return ds
 
-def write_dataset(itp:tuple):
+def write_dataset(ds:xr.Dataset):
     '''
     Write interpolated grid to NetCDF file using Xarray.
 
@@ -257,9 +274,6 @@ def write_dataset(itp:tuple):
         None
         
     '''
-
-    # create dataset
-    ds = create_dataset(itp)    
 
     # save
     fpath = os.path.join(utils.dirs["data"], "btsettl_interp.nc")
