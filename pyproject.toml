@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "MITHRA"
+name = "mithra"
 version = "0.1.0"
 description = "A wrapper for stellar evolution models and tracks."
 authors = ["Harrison Nicholls <harrison.nicholls@physics.ox.ac.uk>"]
@@ -16,7 +16,7 @@ requests = "^2.32.2"
 pytest = "^6.2"
 
 [tool.poetry.scripts]
-my-script = "MITHRA.install:main"
+my-script = "mithra.install:main"
 
 [build-system]
 requires = ["poetry-core"]

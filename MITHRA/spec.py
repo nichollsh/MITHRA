@@ -3,7 +3,7 @@ import xarray as xr
 import numpy as np
 import scipy.interpolate as interp
 
-import MITHRA.utils as utils
+import mithra.utils as utils
 
 def scrape_npy(url:str):
     '''

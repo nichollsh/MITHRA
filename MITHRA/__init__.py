@@ -1,2 +1,2 @@
-import MITHRA.spec as spec 
-import MITHRA.tracks as tracks 
+import mithra.spec as spec 
+import mithra.tracks as tracks 

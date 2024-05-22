@@ -14,7 +14,7 @@ Pronounced: *mith*-*rah*. Named after the Persian god of light and the sun.
 * `LICENSE.txt`     - License for use and re-use
 * `pyproject.toml`  - Configuration file for installing and building the Python module
 * `data/`           - Data files
-* `src/`            - MITHRA source code
+* `mithra/`         - MITHRA source code
 * `dist/`           - Compiled module files
 * `.github/`        - GitHub workflows
 
