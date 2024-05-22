@@ -6,7 +6,7 @@ This code is distributed under the BSD 3-Clause license.
 
 All spectra are calculated at the surface of the star.
 
-Pronounced: *mith*-*rah*. Named after the Iranian deity of light and the sun.
+Pronounced: *mith*-*rah*. Named after the Persian god of light and the sun.
 
 ## Repository structure 
 * `README.md`       - This file
