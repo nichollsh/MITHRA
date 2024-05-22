@@ -1,11 +1,9 @@
 .vscode
 .DS_Store
-*.nc
-*.dat
-*.tmp
-*.npy
-nogit*
 __pycache__
-*.bak
-*.tar.gz
+
 output/
+
+nogit*
+*.bak
+
