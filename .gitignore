@@ -8,4 +8,5 @@ nogit*
 __pycache__
 *.bak
 *.tar.gz
+dist/
 
