@@ -18,6 +18,8 @@ def download_bhac(use_cache=True)->int:
 
     # Download if required
     if not os.path.exists(out):
+        # Inform
+        print("Downloading evolution tracks...")
 
         # Check server
         response = requests.get(url)
@@ -27,8 +29,9 @@ def download_bhac(use_cache=True)->int:
             utils.rmsafe(out)
             with open(out, 'wb') as file:
                 file.write(response.content)
+            print("    done")
         else:
-            return 1
+            print("    fail")
     
     return flag
 
@@ -37,6 +40,9 @@ def read_bhac()->dict:
 
     # Source file 
     src:str = os.path.join(utils.dirs["data"], "bhac15_full.dat")
+
+    # Download if does not exist
+    download_bhac(use_cache=True)
 
     # Read file
     with open(src,"r") as hdl:
@@ -125,6 +131,9 @@ def get_params_bhac(tracks:dict, mass:float, age:float, params:list)->list:
 
     out = []
     for p in params:
-        out.append(interp.pchip_interpolate(track["age"],track[p],age))
+        if p == "mass":
+            out.append(track["mass"])
+        else:
+            out.append(interp.pchip_interpolate(track["age"],track[p],age))
     return out
 

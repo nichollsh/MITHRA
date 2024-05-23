@@ -24,6 +24,7 @@ dependencies = [
     "numpy",
     "xarray",
     "scipy",
+    "osfclient"
 ]
 requires-python = ">=3.11"
 

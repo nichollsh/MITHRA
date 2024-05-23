@@ -28,7 +28,7 @@ jobs:
       - name: Lint with Ruff
         run: |
           python -m pip install ruff
-          ruff --output-format=github .
+          ruff --output-format=github check .
         continue-on-error: true
 
       - name: Build package

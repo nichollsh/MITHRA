@@ -5,6 +5,7 @@ import subprocess
 import xarray as xr
 import numpy as np
 import scipy.interpolate as interp
+from scipy.integrate import cumulative_trapezoid
 
 import mithra.utils as utils
 
@@ -91,7 +92,29 @@ def download_tar():
     Returns
         None
     '''
-    raise Exception("Not yet implemented")
+
+    # Setup
+    out = os.path.join(utils.dirs["data"],"npys.tar.gz")
+    utils.rmsafe(out)
+    cmd = ["osf","-p", "8r2sw", "fetch", "BTSETTL-CIFIST/npys.tar.gz",out]
+    env = os.environ.copy()
+
+    # Download
+    print("Downloading tar.gz archive...")
+    subprocess.run(cmd,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.STDOUT)
+    print("    Done")
+
+    # Unzip
+    print("Extracting archive...")
+    cmd = ["tar", "-xf", out, "-C", utils.dirs["data"]]
+    subprocess.run(cmd)
+
+    # Remove tar 
+    cmd = ["rm",out]
+    subprocess.run(cmd)
+    print("    done")
+
+    return 
 
 
 def get_params_from_name(fpath:str):
@@ -125,6 +148,23 @@ def list_files():
     files = glob.glob(os.path.join(utils.dirs["data"], "btsettl-cifist*.npy")) 
     return list(files)
 
+def integrate_spectrum(wl,fl):
+    '''
+    Integrate a spectrum over wavelength.
+
+    Returns the cumulative integral at each point, starting from zero.
+
+    Parameters
+        wl (np.ndarray): wavelengths [nm]
+        fl (np.ndarray): fluxes [erg s-1 cm-2 nm-1]
+
+    Returns
+        fi (np.ndarray): integrated fluxes [erg s-1 cm-2]
+    '''
+
+    fi = cumulative_trapezoid(fl,wl, initial=0.0)
+    return fi
+
 def create_interp(num_teff=0, num_logg=0, num_wave=40, teff_lims=(1.0, 2e5), logg_lims=(1.0, 50.0)):
     '''
     Create interpolated grid of teff, logg, and wavelength from npy files.
@@ -155,8 +195,8 @@ def create_interp(num_teff=0, num_logg=0, num_wave=40, teff_lims=(1.0, 2e5), log
     # limit wl range
     max_wave = min(max_wave, 1e5)  # 100 um
     min_wave = max(min_wave, 1.0)  # 1 nm
-    target_wave = np.linspace(np.log10(min_wave+0.1), np.log10(max_wave-0.1), num_wave)
-    len_ds = int(num_wave * 3)  # length of downsampled spectrum
+    target_wave = np.linspace(np.log10(min_wave+1), np.log10(max_wave-1), num_wave)
+    len_ds = int(num_wave * 2)  # length of downsampled spectrum
 
     # flattened data from files
     flat_teff = []
@@ -207,7 +247,7 @@ def create_interp(num_teff=0, num_logg=0, num_wave=40, teff_lims=(1.0, 2e5), log
     # unique
     uniq_teff = np.unique(flat_teff)
     uniq_logg = np.unique(flat_logg)
-    print("Source axes: (teff, logg, wave) = (%d, %d, %d)"%(len(uniq_teff), len(uniq_logg), len_ds))
+    print("Source axes: (teff, logg, wave) = (%d, %d, %d)"%(len(uniq_teff), len(uniq_logg), num_wave))
 
     # output sizes
     if num_teff <= 1:
@@ -297,8 +337,12 @@ def read_dataset(fp:str)->xr.Dataset:
         out (xr.Dataset): dataset of interpolated data
     '''
 
+    print("Reading dataset...")
+    if not os.path.exists(fp):
+        raise FileNotFoundError(fp)
     with xr.open_dataset(fp) as ds:
         out = ds.copy(deep=True)
+        print("    done")
     return out
 
 

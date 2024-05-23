@@ -14,8 +14,8 @@ Pronounced: *mith*-*rah*. Named after the Persian god of light and the sun.
 * `LICENSE.txt`     - License for use and re-use
 * `pyproject.toml`  - Configuration file for installing and building the Python module
 * `data/`           - Data files
-* `mithra/`         - MITHRA source code
-* `dist/`           - Compiled module files
+* `src/mithra/`     - MITHRA source code and example data
+* `tests/`          - Test scripts
 * `.github/`        - GitHub workflows
 
 
@@ -27,6 +27,9 @@ Pronounced: *mith*-*rah*. Named after the Persian god of light and the sun.
 * Configure a Python environment 
 * Run `pip install .` in the project directory
 * Done
+
+## Development
+If you want to develop the package, run `pip install -e .` instead, which allows the files to be edited.
 
 ## Contributors
 * Harrison Nicholls

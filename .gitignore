@@ -5,6 +5,7 @@ __pycache__
 poetry.lock
 
 output/
+src/mithra/data
 
 nogit*
 *.bak
