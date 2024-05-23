@@ -1,27 +1,33 @@
-[tool.poetry]
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
 name = "mithra"
 version = "0.1.0"
 description = "A wrapper for stellar evolution models and tracks."
-authors = ["Harrison Nicholls <harrison.nicholls@physics.ox.ac.uk>"]
+authors = [{name = "Harrison Nicholls", email = "harrison.nicholls@physics.ox.ac.uk"}]
 readme = "README.md"
-# packages = [
-#     { include = "mithra" }
-# ]
+license = {file = "LICENSE.txt"}
+classifiers = [
+    "License :: OSI Approved :: BSD License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    ]
+dependencies = [
+    "flit_core >=3.9.0",
+    "requests",
+    "docutils",
+    "tomli-w",
+    "pip",
+    "numpy",
+    "xarray",
+    "scipy",
+]
+requires-python = ">=3.11"
 
-[tool.poetry.dependencies]
-python = "^3.11"
-numpy = "^1.26.4"
-xarray = "^2024.5.0"
-scipy = "^1.13.0"
-requests = "^2.32.2"
 
-[tool.poetry.dev-dependencies]
-pytest = "^6.2"
-
-# [tool.poetry.scripts]
-# my-script = "mithra.install:main"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[project.urls]
+Home = "https://github.com/nichollsh/MITHRA"
 

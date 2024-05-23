@@ -20,14 +20,12 @@ Pronounced: *mith*-*rah*. Named after the Persian god of light and the sun.
 
 
 ## Requirements
-* Python (>= 3.12)
-* poetry
+* Python (>= 3.11)
 * wget
 
 ## Installation
 * Configure a Python environment 
-* Install poetry
-* Run `poetry install` in the root directory of this repository
+* Run `pip install .` in the project directory
 * Done
 
 ## Contributors
