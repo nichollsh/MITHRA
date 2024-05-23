@@ -94,7 +94,7 @@ def download_tar():
     '''
 
     # Setup
-    out = os.path.join(utils.dirs["data"],"npys.tar.gz")
+    out = "/tmp/btsettl.tar.gz"
     utils.rmsafe(out)
     cmd = ["osf","-p", "8r2sw", "fetch", "BTSETTL-CIFIST/npys.tar.gz",out]
     env = os.environ.copy()
@@ -106,6 +106,7 @@ def download_tar():
 
     # Unzip
     print("Extracting archive...")
+    print("    to: '%s'"%utils.dirs["data"])
     cmd = ["tar", "-xf", out, "-C", utils.dirs["data"]]
     subprocess.run(cmd)
 
