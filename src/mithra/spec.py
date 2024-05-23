@@ -197,7 +197,7 @@ def create_interp(num_teff=0, num_logg=0, num_wave=40, teff_lims=(1.0, 2e5), log
     max_wave = min(max_wave, 1e5)  # 100 um
     min_wave = max(min_wave, 1.0)  # 1 nm
     target_wave = np.linspace(np.log10(min_wave+1), np.log10(max_wave-1), num_wave)
-    len_ds = int(num_wave * 2)  # length of downsampled spectrum
+    len_ds = int(max(num_wave * 2, 50))  # length of downsampled spectrum
 
     # flattened data from files
     flat_teff = []
@@ -437,9 +437,9 @@ def get_spec_from_npy(teff:float, logg:float, xmax:float=1.0e9):
     return wl,fl
 
 
-def write_csv(fp:str, wl:float,fl:float):
+def write_tsv(fp:str, wl:float,fl:float):
     '''
-    Write stellar spectrum to csv file.
+    Write stellar spectrum to a tsv file.
 
     Parameters
         fp (string): path to output file
@@ -454,9 +454,30 @@ def write_csv(fp:str, wl:float,fl:float):
     utils.rmsafe(fp)
 
     X = np.array([wl,fl]).T
-    head = "Wavelength [nm] , Flux [erg s-1 cm-2 nm-1]"
-    np.savetxt(fp, X, fmt="%.5e", delimiter=',',header=head)
+    head = "Wavelength [nm]\tFlux [erg s-1 cm-2 nm-1]"
+    np.savetxt(fp, X, fmt="%.5e", delimiter='\t',header=head)
     return 
+
+def read_tsv(fp:str):
+    '''
+    Read stellar spectrum from a tsv file.
+
+    Parameters
+        fp (string): path to output file
+
+    Returns
+        wl (np.ndarray): wavelengths [nm]
+        fl (np.ndarray): spectral fluxes [erg s-1 cm-2 nm-1]
+    '''
+     
+    fp = os.path.abspath(fp)
+    if not os.path.exists(fp):
+        raise FileNotFoundError(fp)
+    
+    X = np.loadtxt(fp, dtype=float,delimiter='\t').T
+    wl = X[0]
+    fl = X[1]
+    return wl,fl
 
 
 def extend_planck(teff, wl, fl, xmax=1.0e9):

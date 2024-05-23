@@ -6,11 +6,11 @@ on:
   push:
     branches: [main]
   pull_request:
-
+name: Install and build MITHRA
 jobs:
   install:
     runs-on: ubuntu-latest
-    name: Install, lint, and build
+    name: Install and build
     steps:
       - uses: actions/checkout@v1
     
