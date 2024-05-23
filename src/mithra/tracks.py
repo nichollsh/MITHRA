@@ -1,4 +1,5 @@
-import requests, os
+import requests
+import os
 import numpy as np
 import scipy.interpolate as interp
 
@@ -66,12 +67,12 @@ def read_bhac()->dict:
     track = {}
     while i < nlines:
 
-        l = lines[i][1:-1].strip()
-        if len(l) == 0:
+        line = lines[i][1:-1].strip()
+        if len(line) == 0:
             i += 1
             continue 
 
-        if "----------" in l:
+        if "----------" in line:
             # skip header
             i += 3
             tracks.append(track)
@@ -81,12 +82,12 @@ def read_bhac()->dict:
             continue
 
         # read data
-        lsplit = l.split(" ")
+        lsplit = line.split(" ")
         values = []
-        for l in lsplit:
-            l = l.replace(' ','')
-            if len(l) > 0:
-                values.append(float(l))
+        for word in lsplit:
+            word = word.replace(' ','')
+            if len(word) > 0:
+                values.append(float(word))
         track["mass"] = values[0]
         for j,key in enumerate(arr_keys):
             track[key].append(values[j+1])

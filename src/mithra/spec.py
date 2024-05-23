@@ -1,4 +1,7 @@
-import glob, os, gc, subprocess
+import glob
+import os
+import gc
+import subprocess
 import xarray as xr
 import numpy as np
 import scipy.interpolate as interp
@@ -35,8 +38,8 @@ def scrape_npy(url:str):
 
     wl = []
     fl = []
-    for i,l in enumerate(lines[9:]):
-        s = l.split()
+    for line in lines[9:]:
+        s = line.split()
         if len(s) == 2:
             wl.append(float(s[0]))
             fl.append(float(s[1]))
@@ -163,12 +166,12 @@ def create_interp(num_teff=0, num_logg=0, num_wave=40, teff_lims=(1.0, 2e5), log
     print("Reading npy files...")
     for i,f in enumerate(list_files()):
         # get header
-        t,l = get_params_from_name(f)
+        teff,logg = get_params_from_name(f)
 
         # skip this point?
-        if not(teff_lims[0] <= t <= teff_lims[1]):
+        if not(teff_lims[0] <= teff <= teff_lims[1]):
             continue 
-        if not(logg_lims[0] <= l <= logg_lims[1]):
+        if not(logg_lims[0] <= logg <= logg_lims[1]):
             continue
 
         # load data
@@ -190,8 +193,8 @@ def create_interp(num_teff=0, num_logg=0, num_wave=40, teff_lims=(1.0, 2e5), log
         # store
         flat_wave.extend(list(w_ds))
         flat_flux.extend(list(f_ds))
-        flat_teff.extend(list(np.ones(len(w_ds))*t))
-        flat_logg.extend(list(np.ones(len(w_ds))*l))
+        flat_teff.extend(list(np.ones(len(w_ds))*teff))
+        flat_logg.extend(list(np.ones(len(w_ds))*logg))
 
         del w_ds 
         del f_ds 
@@ -343,9 +346,9 @@ def get_axes():
     arr_teff = []
     arr_logg = []
     for f in names:
-        t,l = get_params_from_name(f)
-        arr_teff.append(t)
-        arr_logg.append(l)
+        teff,logg = get_params_from_name(f)
+        arr_teff.append(teff)
+        arr_logg.append(logg)
     arr_teff = np.unique(arr_teff)
     arr_logg = np.unique(arr_logg)
 
